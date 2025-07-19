@@ -27,14 +27,30 @@ type Discussion struct {
 	User     User   `json:"user"`
 }
 
+type DiscussionComment struct {
+	Body      string     `json:"body"`
+	User      User       `json:"user"`
+	ID        int        `json:"id"`
+	Reactions []Reaction `json:"-"`
+}
+
 type Comment struct {
-	Body string `json:"body"`
-	User User   `json:"user"`
+	Body      string     `json:"body"`
+	User      User       `json:"user"`
+	ID        int        `json:"id"`
+	Reactions []Reaction `json:"-"`
+}
+
+type Reaction struct {
+	Content string `json:"content"`
+	User    User   `json:"user"`
 }
 
 type User struct {
 	Login string `json:"login"`
 }
+
+var sharedHTTPClient = &http.Client{}
 
 func ParseURL(issueURL string) (owner, repo string, number int, issueType string, err error) {
 	parsedURL, err := url.Parse(issueURL)
@@ -69,7 +85,6 @@ func ParseURL(issueURL string) (owner, repo string, number int, issueType string
 func FetchIssue(owner, repo string, issueNumber int, token string) (*Issue, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues/%d", owner, repo, issueNumber)
 
-	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -79,7 +94,7 @@ func FetchIssue(owner, repo string, issueNumber int, token string) (*Issue, erro
 		req.Header.Set("Authorization", "token "+token)
 	}
 
-	resp, err := client.Do(req)
+	resp, err := sharedHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +116,6 @@ func FetchComments(owner, repo string, issueNumber int, token string) ([]Comment
 	baseURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues/%d/comments", owner, repo, issueNumber)
 	var allComments []Comment
 
-	client := &http.Client{}
 	nextURL := baseURL // Initial URL
 
 	for nextURL != "" {
@@ -114,7 +128,7 @@ func FetchComments(owner, repo string, issueNumber int, token string) ([]Comment
 			req.Header.Set("Authorization", "token "+token)
 		}
 
-		resp, err := client.Do(req)
+		resp, err := sharedHTTPClient.Do(req)
 		if err != nil {
 			return nil, err
 		}
@@ -128,6 +142,18 @@ func FetchComments(owner, repo string, issueNumber int, token string) ([]Comment
 		if err := json.NewDecoder(resp.Body).Decode(&currentComments); err != nil {
 			return nil, err
 		}
+
+		// Fetch reactions for each comment
+		for i := range currentComments {
+			reactions, err := FetchReactionsForComment(owner, repo, currentComments[i].ID, token)
+			if err != nil {
+				// Log the error for visibility, but skip this comment's reactions
+				fmt.Printf("Warning: failed to fetch reactions for comment %d in %s/%s issue %d: %v\n", currentComments[i].ID, owner, repo, issueNumber, err)
+				continue
+			}
+			currentComments[i].Reactions = reactions
+		}
+
 		allComments = append(allComments, currentComments...) // Append current page comments
 
 		nextURL = "" // Reset nextURL, will be updated from Link header if exists
@@ -154,10 +180,38 @@ func FetchComments(owner, repo string, issueNumber int, token string) ([]Comment
 	return allComments, nil
 }
 
+func FetchReactionsForComment(owner, repo string, commentID int, token string) ([]Reaction, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues/comments/%d/reactions", owner, repo, commentID)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "token "+token)
+	}
+	req.Header.Set("Accept", "application/vnd.github.squirrel-girl-preview+json")
+
+	resp, err := sharedHTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub API returned status: %s", resp.Status)
+	}
+
+	var reactions []Reaction
+	if err := json.NewDecoder(resp.Body).Decode(&reactions); err != nil {
+		return nil, err
+	}
+	return reactions, nil
+}
+
 func FetchDiscussion(owner, repo string, discussionNumber int, token string) (*Discussion, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/discussions/%d", owner, repo, discussionNumber)
 
-	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -169,7 +223,7 @@ func FetchDiscussion(owner, repo string, discussionNumber int, token string) (*D
 	req.Header.Set("Accept", "application/vnd.github+json") // Important for Discussions API
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")    // Specify API version
 
-	resp, err := client.Do(req)
+	resp, err := sharedHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +245,6 @@ func FetchDiscussionComments(owner, repo string, discussionNumber int, token str
 	baseURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/discussions/%d/comments?state=all", owner, repo, discussionNumber)
 	var allComments []DiscussionComment
 
-	client := &http.Client{}
 	nextURL := baseURL // Initial URL
 
 	for nextURL != "" {
@@ -206,7 +259,7 @@ func FetchDiscussionComments(owner, repo string, discussionNumber int, token str
 		req.Header.Set("Accept", "application/vnd.github+json")
 		req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
-		resp, err := client.Do(req)
+		resp, err := sharedHTTPClient.Do(req)
 		if err != nil {
 			return nil, err
 		}
@@ -220,6 +273,19 @@ func FetchDiscussionComments(owner, repo string, discussionNumber int, token str
 		if err := json.NewDecoder(resp.Body).Decode(&currentComments); err != nil {
 			return nil, err
 		}
+
+		// Fetch reactions for each discussion comment
+		for i := range currentComments {
+			// Discussion comments have no ID field by default, but GitHub API returns "id"
+			// Add an ID field to DiscussionComment struct if not present
+			reactions, err := FetchReactionsForComment(owner, repo, currentComments[i].ID, token)
+			if err != nil {
+				fmt.Printf("Warning: failed to fetch reactions for discussion comment %d in %s/%s discussion %d: %v\n", currentComments[i].ID, owner, repo, discussionNumber, err)
+				continue
+			}
+			currentComments[i].Reactions = reactions
+		}
+
 		allComments = append(allComments, currentComments...) // Append current page comments
 
 		nextURL = "" // Reset nextURL, will be updated from Link header if exists
@@ -244,9 +310,4 @@ func FetchDiscussionComments(owner, repo string, discussionNumber int, token str
 	}
 
 	return allComments, nil
-}
-
-type DiscussionComment struct {
-	Body string `json:"body"`
-	User User   `json:"user"`
 }
