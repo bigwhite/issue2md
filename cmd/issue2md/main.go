@@ -73,7 +73,11 @@ func main() {
 	}
 
 	if markdownFile == "" {
-		markdownFile = fmt.Sprintf("%s_%s_%s_%d.md", owner, repo, issueType, issueNumber)
+		if _, err := io.WriteString(os.Stdout, markdown); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing to stdout: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 
 	file, err := os.Create(markdownFile)
