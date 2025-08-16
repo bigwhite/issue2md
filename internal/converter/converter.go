@@ -72,6 +72,26 @@ func IssueToMarkdown(issue *github.Issue, comments []github.Comment, enableUserL
 	return sb.String()
 }
 
+func PullRequestToMarkdown(pr *github.PullRequest, comments []github.Comment, enableUserLinks bool) string {
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf("# %s\n\n", pr.Title))
+	sb.WriteString(fmt.Sprintf("**Pull Request Number**: #%d\n", pr.Number))
+	sb.WriteString(fmt.Sprintf("**URL**: %s\n", pr.URL))
+	sb.WriteString(fmt.Sprintf("**Created by**: %s\n\n", formatUser(pr.User.Login, enableUserLinks)))
+	sb.WriteString(fmt.Sprintf("## Description\n\n%s\n\n", pr.Body))
+
+	if len(comments) > 0 {
+		sb.WriteString("## Comments\n\n")
+		for i, comment := range comments {
+			writeComment(&sb, i, comment.User, comment.Body, enableUserLinks)
+			writeReactions(&sb, comment.Reactions, enableUserLinks)
+		}
+	}
+
+	return sb.String()
+}
+
 func DiscussionToMarkdown(discussion *github.Discussion, discussionComments []github.DiscussionComment, enableUserLinks bool) string {
 	var sb strings.Builder
 

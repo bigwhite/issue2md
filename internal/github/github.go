@@ -13,7 +13,16 @@ type Issue struct {
 	Title    string `json:"title"`
 	Body     string `json:"body"`
 	Number   int    `json:"number"`
-	URL      string `json:"url"`
+	URL      string `json:"html_url"` // Use html_url for consistency
+	Comments int    `json:"comments"`
+	User     User   `json:"user"`
+}
+
+type PullRequest struct {
+	Title    string `json:"title"`
+	Body     string `json:"body"`
+	Number   int    `json:"number"`
+	URL      string `json:"html_url"` // Use html_url for the web link
 	Comments int    `json:"comments"`
 	User     User   `json:"user"`
 }
@@ -68,8 +77,10 @@ func ParseURL(issueURL string) (owner, repo string, number int, issueType string
 		issueType = "issue"
 	} else if parts[2] == "discussions" && len(parts) == 4 {
 		issueType = "discussion"
+	} else if parts[2] == "pull" && len(parts) == 4 {
+		issueType = "pull"
 	} else {
-		err = fmt.Errorf("invalid GitHub issue or discussion URL format")
+		err = fmt.Errorf("invalid GitHub issue, discussion, or pull request URL format")
 		return
 	}
 	owner = parts[0]
@@ -110,6 +121,36 @@ func FetchIssue(owner, repo string, issueNumber int, token string) (*Issue, erro
 	}
 
 	return &issue, nil
+}
+
+func FetchPullRequest(owner, repo string, pullNumber int, token string) (*PullRequest, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/pulls/%d", owner, repo, pullNumber)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if token != "" {
+		req.Header.Set("Authorization", "token "+token)
+	}
+
+	resp, err := sharedHTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub API returned status: %s", resp.Status)
+	}
+
+	var pullRequest PullRequest
+	if err := json.NewDecoder(resp.Body).Decode(&pullRequest); err != nil {
+		return nil, err
+	}
+
+	return &pullRequest, nil
 }
 
 func FetchComments(owner, repo string, issueNumber int, token string, enableReactions bool, enableUserLinks bool) ([]Comment, error) {
