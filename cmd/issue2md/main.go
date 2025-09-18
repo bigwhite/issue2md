@@ -50,7 +50,7 @@ func main() {
 	var markdown string
 	switch itemType {
 	case "issue":
-		issue, err := github.FetchIssue(owner, repo, itemNumber, token)
+		issue, err := github.FetchIssue(owner, repo, itemNumber, token, *enableReactions)
 		if err != nil {
 			fmt.Printf("Error fetching issue: %v\n", err)
 			return
@@ -64,7 +64,7 @@ func main() {
 		markdown = converter.IssueToMarkdown(issue, comments, *enableUserLinks)
 
 	case "pull":
-		pullRequest, err := github.FetchPullRequest(owner, repo, itemNumber, token)
+		pullRequest, err := github.FetchPullRequest(owner, repo, itemNumber, token, *enableReactions)
 		if err != nil {
 			fmt.Printf("Error fetching pull request: %v\n", err)
 			return

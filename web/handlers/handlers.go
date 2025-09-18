@@ -51,7 +51,7 @@ func ConvertHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch itemType {
 	case "issue":
-		issue, err := github.FetchIssue(owner, repo, itemNumber, token)
+		issue, err := github.FetchIssue(owner, repo, itemNumber, token, enableReactions)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error fetching issue: %v", err), http.StatusInternalServerError)
 			return
@@ -65,7 +65,7 @@ func ConvertHandler(w http.ResponseWriter, r *http.Request) {
 		markdown = converter.IssueToMarkdown(issue, comments, enableUserLinks)
 		filename = fmt.Sprintf("%s_%s_issue_%d.md", owner, repo, issue.Number)
 	case "pull":
-		pullRequest, err := github.FetchPullRequest(owner, repo, itemNumber, token)
+		pullRequest, err := github.FetchPullRequest(owner, repo, itemNumber, token, enableReactions)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error fetching pull request: %v", err), http.StatusInternalServerError)
 			return

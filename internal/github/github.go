@@ -10,21 +10,39 @@ import (
 )
 
 type Issue struct {
-	Title    string `json:"title"`
-	Body     string `json:"body"`
-	Number   int    `json:"number"`
-	URL      string `json:"html_url"` // Use html_url for consistency
-	Comments int    `json:"comments"`
-	User     User   `json:"user"`
+	Title     string     `json:"title"`
+	Body      string     `json:"body"`
+	Number    int        `json:"number"`
+	URL       string     `json:"html_url"` // Use html_url for consistency
+	Comments  int        `json:"comments"`
+	User      User       `json:"user"`
+	Reactions []Reaction `json:"-"`
+}
+
+func (i *Issue) ItemNumber() int {
+	return i.Number
+}
+
+func (i *Issue) SetReactions(reactions []Reaction) {
+	i.Reactions = reactions
 }
 
 type PullRequest struct {
-	Title    string `json:"title"`
-	Body     string `json:"body"`
-	Number   int    `json:"number"`
-	URL      string `json:"html_url"` // Use html_url for the web link
-	Comments int    `json:"comments"`
-	User     User   `json:"user"`
+	Title     string     `json:"title"`
+	Body      string     `json:"body"`
+	Number    int        `json:"number"`
+	URL       string     `json:"html_url"` // Use html_url for the web link
+	Comments  int        `json:"comments"`
+	User      User       `json:"user"`
+	Reactions []Reaction `json:"-"`
+}
+
+func (pr *PullRequest) ItemNumber() int {
+	return pr.Number
+}
+
+func (pr *PullRequest) SetReactions(reactions []Reaction) {
+	pr.Reactions = reactions
 }
 
 type Discussion struct {
@@ -57,6 +75,11 @@ type Reaction struct {
 
 type User struct {
 	Login string `json:"login"`
+}
+
+type reactionable interface {
+	ItemNumber() int
+	SetReactions([]Reaction)
 }
 
 var sharedHTTPClient = &http.Client{}
@@ -93,7 +116,16 @@ func ParseURL(issueURL string) (owner, repo string, number int, issueType string
 	return owner, repo, issueNumber, issueType, nil
 }
 
-func FetchIssue(owner, repo string, issueNumber int, token string) (*Issue, error) {
+func fetchAndSetReactions(item reactionable, owner, repo, token string) error {
+	reactions, err := FetchReactionsForPullRequestOrIssue(owner, repo, item.ItemNumber(), token)
+	if err != nil {
+		return fmt.Errorf("failed to fetch reactions in %s/%s for item %d: %v. Ensure you have set a valid GITHUB_TOKEN", owner, repo, item.ItemNumber(), err)
+	}
+	item.SetReactions(reactions)
+	return nil
+}
+
+func FetchIssue(owner, repo string, issueNumber int, token string, enableReactions bool) (*Issue, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues/%d", owner, repo, issueNumber)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -120,10 +152,16 @@ func FetchIssue(owner, repo string, issueNumber int, token string) (*Issue, erro
 		return nil, err
 	}
 
+	if enableReactions {
+		if err := fetchAndSetReactions(&issue, owner, repo, token); err != nil {
+			return nil, err
+		}
+	}
+
 	return &issue, nil
 }
 
-func FetchPullRequest(owner, repo string, pullNumber int, token string) (*PullRequest, error) {
+func FetchPullRequest(owner, repo string, pullNumber int, token string, enableReactions bool) (*PullRequest, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/pulls/%d", owner, repo, pullNumber)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -148,6 +186,12 @@ func FetchPullRequest(owner, repo string, pullNumber int, token string) (*PullRe
 	var pullRequest PullRequest
 	if err := json.NewDecoder(resp.Body).Decode(&pullRequest); err != nil {
 		return nil, err
+	}
+
+	if enableReactions {
+		if err := fetchAndSetReactions(&pullRequest, owner, repo, token); err != nil {
+			return nil, err
+		}
 	}
 
 	return &pullRequest, nil
@@ -221,9 +265,7 @@ func FetchComments(owner, repo string, issueNumber int, token string, enableReac
 	return allComments, nil
 }
 
-func FetchReactionsForComment(owner, repo string, commentID int, token string) ([]Reaction, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues/comments/%d/reactions", owner, repo, commentID)
-
+func fetchReactions(url, token string) ([]Reaction, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -248,6 +290,16 @@ func FetchReactionsForComment(owner, repo string, commentID int, token string) (
 		return nil, err
 	}
 	return reactions, nil
+}
+
+func FetchReactionsForPullRequestOrIssue(owner, repo string, prOrIssueNumber int, token string) ([]Reaction, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues/%d/reactions", owner, repo, prOrIssueNumber)
+	return fetchReactions(url, token)
+}
+
+func FetchReactionsForComment(owner, repo string, commentID int, token string) ([]Reaction, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues/comments/%d/reactions", owner, repo, commentID)
+	return fetchReactions(url, token)
 }
 
 func FetchDiscussion(owner, repo string, discussionNumber int, token string) (*Discussion, error) {
