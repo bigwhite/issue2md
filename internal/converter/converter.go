@@ -56,9 +56,9 @@ func IssueToMarkdown(issue *github.Issue, comments []github.Comment, enableUserL
 	var sb strings.Builder
 
 	sb.WriteString(fmt.Sprintf("# %s\n\n", issue.Title))
-	sb.WriteString(fmt.Sprintf("**Issue Number**: #%d\n", issue.Number))
-	sb.WriteString(fmt.Sprintf("**URL**: %s\n", issue.URL))
-	sb.WriteString(fmt.Sprintf("**Created by**: %s\n\n", formatUser(issue.User.Login, enableUserLinks)))
+	sb.WriteString(fmt.Sprintf("- **Issue Number**: #%d\n", issue.Number))
+	sb.WriteString(fmt.Sprintf("- **URL**: %s\n", issue.URL))
+	sb.WriteString(fmt.Sprintf("- **Created by**: %s\n\n", formatUser(issue.User.Login, enableUserLinks)))
 	sb.WriteString(fmt.Sprintf("## Description\n\n%s\n\n", issue.Body))
 	writeReactions(&sb, issue.Reactions, enableUserLinks)
 
@@ -77,9 +77,9 @@ func PullRequestToMarkdown(pr *github.PullRequest, comments []github.Comment, en
 	var sb strings.Builder
 
 	sb.WriteString(fmt.Sprintf("# %s\n\n", pr.Title))
-	sb.WriteString(fmt.Sprintf("**Pull Request Number**: #%d\n", pr.Number))
-	sb.WriteString(fmt.Sprintf("**URL**: %s\n", pr.URL))
-	sb.WriteString(fmt.Sprintf("**Created by**: %s\n\n", formatUser(pr.User.Login, enableUserLinks)))
+	sb.WriteString(fmt.Sprintf("- **Pull Request Number**: #%d\n", pr.Number))
+	sb.WriteString(fmt.Sprintf("- **URL**: %s\n", pr.URL))
+	sb.WriteString(fmt.Sprintf("- **Created by**: %s\n\n", formatUser(pr.User.Login, enableUserLinks)))
 	sb.WriteString(fmt.Sprintf("## Description\n\n%s\n\n", pr.Body))
 	writeReactions(&sb, pr.Reactions, enableUserLinks)
 
