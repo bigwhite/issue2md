@@ -54,3 +54,16 @@ Open `localhost:8080` in your browser:
 ![Screenshot](./screen-snapshot.png)
 
 Input the issue, discussion, or pull request URL you wish to convert and click the "Convert" button!
+
+## Donate
+
+If you find issue2md useful, consider buying me a coffee!
+
+**PayPal**: [![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-0070ba?logo=paypal&logoColor=white)](https://www.paypal.com/paypalme/tonybaicn)
+
+**WeChat Pay / Alipay**:
+
+<p float="left">
+  <img src="doc/donate/wechat-pay.png" alt="WeChat Pay" width="200"/>
+  <img src="doc/donate/alipay.png" alt="Alipay" width="200"/>
+</p>

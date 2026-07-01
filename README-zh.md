@@ -51,4 +51,17 @@ $ ./issue2mdweb
 
 ![](./screen-snapshot.png)
 
-输入您想要转换的 issue、discussion 或 pull request 的URL，然后点击“Convert”按钮！
+输入您想要转换的 issue、discussion 或 pull request 的URL，然后点击”Convert”按钮！
+
+## 捐赠
+
+如果 issue2md 对你有帮助，请作者喝杯咖啡！
+
+**PayPal**: [![通过 PayPal 捐赠](https://img.shields.io/badge/Donate-PayPal-0070ba?logo=paypal&logoColor=white)](https://www.paypal.com/paypalme/tonybaicn)
+
+**微信支付 / 支付宝**:
+
+<p float=”left”>
+  <img src=”doc/donate/wechat-pay.png” alt=”微信支付” width=”200”/>
+  <img src=”doc/donate/alipay.png” alt=”支付宝” width=”200”/>
+</p>
