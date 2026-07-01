@@ -51,7 +51,7 @@ $ ./issue2mdweb
 
 ![](./screen-snapshot.png)
 
-输入您想要转换的 issue、discussion 或 pull request 的URL，然后点击”Convert”按钮！
+输入您想要转换的 issue、discussion 或 pull request 的URL，然后点击"Convert"按钮！
 
 ## 捐赠
 
@@ -61,7 +61,7 @@ $ ./issue2mdweb
 
 **微信支付 / 支付宝**:
 
-<p float=”left”>
-  <img src=”doc/donate/wechat-pay.png” alt=”微信支付” width=”200”/>
-  <img src=”doc/donate/alipay.png” alt=”支付宝” width=”200”/>
+<p float="left">
+  <img src="doc/donate/wechat-pay.png" alt="微信支付" width="200"/>
+  <img src="doc/donate/alipay.png" alt="支付宝" width="200"/>
 </p>
